@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Turtle Animation</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #000; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }
+    canvas { background: #000; }
+  </style>
+</head>
+<body>
+  <canvas id="turtleCanvas" width="800" height="800"></canvas>
+  <script>
+    const canvas = document.getElementById('turtleCanvas');
+    const ctx = canvas.getContext('2d');
+    class CanvasTurtle {
+      constructor(ctx, w, h) {
+        this.ctx = ctx; this.x = w / 2; this.y = h / 2; this.angle = 0; this.ctx.lineWidth = 1;
+      }
+      setColor(c) { this.ctx.strokeStyle = c; }
+      forward(d) {
+        const rad = (this.angle * Math.PI) / 180;
+        const nx = this.x + d * Math.cos(rad);
+        const ny = this.y - d * Math.sin(rad);
+        this.ctx.beginPath(); this.ctx.moveTo(this.x, this.y); this.ctx.lineTo(nx, ny); this.ctx.stroke();
+        this.x = nx; this.y = ny;
+      }
+      left(a) { this.angle += a; }
+      circle(r, e) {
+        const rad = (this.angle * Math.PI) / 180;
+        const cx = this.x + r * Math.cos(rad + Math.PI / 2);
+        const cy = this.y - r * Math.sin(rad + Math.PI / 2);
+        const start = Math.PI / 2 - rad;
+        const end = start - (e * Math.PI) / 180;
+        this.ctx.beginPath(); this.ctx.arc(cx, cy, r, start, end, true); this.ctx.stroke();
+        const finalRad = rad + (e * Math.PI) / 180;
+        this.x = cx - r * Math.cos(finalRad + Math.PI / 2);
+        this.y = cy + r * Math.sin(finalRad + Math.PI / 2);
+        this.angle += e;
+      }
+    }
+    const turtle = new CanvasTurtle(ctx, canvas.width, canvas.height);
+    let i = 0, n = 36, h = 0;
+    function draw() {
+      if (i < 200) {
+        turtle.setColor(`hsl(${(h % 1) * 360}, 100%, 50%)`);
+        h += 1 / n;
+        turtle.forward(i); turtle.left(135); turtle.forward(i); turtle.left(135); turtle.circle(i, 45); turtle.left(135);
+        i++;
+        requestAnimationFrame(draw);
+      }
+    }
+    draw();
+  </script>
+</body>
+</html>
