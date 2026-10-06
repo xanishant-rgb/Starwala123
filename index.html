@@ -1,58 +1,789 @@
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Turtle Animation</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body { background: #000; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }
-    canvas { background: #000; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>3D Realistic Celestial Star Simulator</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+            background-color: #020208;
+            color: #ffffff;
+        }
+        #webgl-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+            z-index: 1;
+            cursor: grab;
+        }
+        #webgl-container:active {
+            cursor: grabbing;
+        }
+        /* Custom UI Glassmorphism Styling */
+        .glass-panel {
+            background: rgba(10, 14, 26, 0.75);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+        }
+        .glass-btn {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.2s ease;
+        }
+        .glass-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        /* Custom Scrollbar for Controls Panel */
+        ::-webkit-scrollbar {
+            width: 5px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0, 0, 0, 0.2);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+        /* Color input styling */
+        input[type="color"] {
+            -webkit-appearance: none;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            overflow: hidden;
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        input[type="color"]::-webkit-color-swatch {
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+        }
+    </style>
 </head>
-<body>
-  <canvas id="turtleCanvas" width="800" height="800"></canvas>
-  <script>
-    const canvas = document.getElementById('turtleCanvas');
-    const ctx = canvas.getContext('2d');
-    class CanvasTurtle {
-      constructor(ctx, w, h) {
-        this.ctx = ctx; this.x = w / 2; this.y = h / 2; this.angle = 0; this.ctx.lineWidth = 1;
-      }
-      setColor(c) { this.ctx.strokeStyle = c; }
-      forward(d) {
-        const rad = (this.angle * Math.PI) / 180;
-        const nx = this.x + d * Math.cos(rad);
-        const ny = this.y - d * Math.sin(rad);
-        this.ctx.beginPath(); this.ctx.moveTo(this.x, this.y); this.ctx.lineTo(nx, ny); this.ctx.stroke();
-        this.x = nx; this.y = ny;
-      }
-      left(a) { this.angle += a; }
-      circle(r, e) {
-        const rad = (this.angle * Math.PI) / 180;
-        const cx = this.x + r * Math.cos(rad + Math.PI / 2);
-        const cy = this.y - r * Math.sin(rad + Math.PI / 2);
-        const start = Math.PI / 2 - rad;
-        const end = start - (e * Math.PI) / 180;
-        this.ctx.beginPath(); this.ctx.arc(cx, cy, r, start, end, true); this.ctx.stroke();
-        const finalRad = rad + (e * Math.PI) / 180;
-        this.x = cx - r * Math.cos(finalRad + Math.PI / 2);
-        this.y = cy + r * Math.sin(finalRad + Math.PI / 2);
-        this.angle += e;
-      }
-    }
-    const turtle = new CanvasTurtle(ctx, canvas.width, canvas.height);
-    let i = 0, n = 36, h = 0;
-    function draw() {
-      if (i < 200) {
-        turtle.setColor(`hsl(${(h % 1) * 360}, 100%, 50%)`);
-        h += 1 / n;
-        turtle.forward(i); turtle.left(135); turtle.forward(i); turtle.left(135); turtle.circle(i, 45); turtle.left(135);
-        i++;
-        requestAnimationFrame(draw);
-      }
-    }
-    draw();
-  </script>
+<body class="bg-black text-white antialiased">
+
+    <!-- 3D Canvas Canvas -->
+    <div id="webgl-container"></div>
+
+    <!-- UI Overlay Controls -->
+    <div class="fixed top-4 left-4 z-20 pointer-events-auto">
+        <button id="toggle-panel-btn" class="glass-btn p-3 rounded-full flex items-center justify-center text-white hover:text-cyan-300 transition shadow-lg">
+            <i class="fa-solid fa-sliders text-xl"></i>
+        </button>
+    </div>
+
+    <!-- Title Badge -->
+    <div class="fixed top-4 right-4 z-10 pointer-events-none hidden sm:block text-right">
+        <h1 class="text-lg font-bold tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-300 via-yellow-100 to-amber-400">CELESTIAL STAR SIMULATOR</h1>
+        <p class="text-xs text-gray-400 font-light">Interactive Realistic 3D Shader Rendering</p>
+    </div>
+
+    <!-- Control Panel Sidebar -->
+    <div id="control-panel" class="fixed top-16 left-4 z-20 w-80 max-h-[82vh] glass-panel rounded-2xl p-5 overflow-y-auto transition-all duration-300 transform opacity-100 scale-100 origin-top-left border border-white/10 shadow-2xl">
+        <div class="flex items-center justify-between pb-3 mb-4 border-b border-white/10">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-sun text-yellow-400"></i>
+                <h2 class="font-semibold text-sm tracking-wide text-white">Star Customization</h2>
+            </div>
+            <button id="close-panel-btn" class="text-gray-400 hover:text-white transition">
+                <i class="fa-solid fa-xmark text-lg"></i>
+            </button>
+        </div>
+
+        <div class="space-y-4 text-xs">
+            <!-- Preset Color Themes -->
+            <div>
+                <label class="block text-gray-300 font-medium mb-2">Preset Stellar Types</label>
+                <div class="grid grid-cols-4 gap-2">
+                    <button class="preset-btn p-2 rounded-lg bg-yellow-500/20 border border-yellow-500/40 hover:bg-yellow-500/40 text-yellow-200 transition text-center" data-core="#ffea9f" data-corona="#ff9100" data-glow="#ff6600">Yellow</button>
+                    <button class="preset-btn p-2 rounded-lg bg-cyan-500/20 border border-cyan-500/40 hover:bg-cyan-500/40 text-cyan-200 transition text-center" data-core="#ffffff" data-corona="#00f0ff" data-glow="#0055ff">Blue</button>
+                    <button class="preset-btn p-2 rounded-lg bg-red-500/20 border border-red-500/40 hover:bg-red-500/40 text-red-200 transition text-center" data-core="#ffcccc" data-corona="#ff3300" data-glow="#aa0000">Red Giant</button>
+                    <button class="preset-btn p-2 rounded-lg bg-purple-500/20 border border-purple-500/40 hover:bg-purple-500/40 text-purple-200 transition text-center" data-core="#ffffff" data-corona="#e066ff" data-glow="#8800cc">Neutron</button>
+                </div>
+            </div>
+
+            <!-- Custom Colors -->
+            <div class="space-y-2 pt-1">
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-300">Core Color</span>
+                    <input type="color" id="core-color-picker" value="#fffae0">
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-300">Corona / Flares Color</span>
+                    <input type="color" id="corona-color-picker" value="#ff9d00">
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-300">Outer Halo Glow</span>
+                    <input type="color" id="glow-color-picker" value="#ff4400">
+                </div>
+            </div>
+
+            <!-- Sliders for Star Attributes -->
+            <div class="space-y-3 pt-2 border-t border-white/10">
+                <div>
+                    <div class="flex justify-between text-gray-300 mb-1">
+                        <span>Star Size</span>
+                        <span id="size-val">1.0</span>
+                    </div>
+                    <input type="range" id="slider-size" min="0.4" max="2.5" step="0.1" value="1.0" class="w-full accent-cyan-400 bg-white/10 rounded-lg appearance-none h-1.5 cursor-pointer">
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-gray-300 mb-1">
+                        <span>Rotation Speed</span>
+                        <span id="speed-val">1.0</span>
+                    </div>
+                    <input type="range" id="slider-speed" min="0.0" max="3.0" step="0.1" value="1.0" class="w-full accent-cyan-400 bg-white/10 rounded-lg appearance-none h-1.5 cursor-pointer">
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-gray-300 mb-1">
+                        <span>Flare & Ray Intensity</span>
+                        <span id="flare-val">1.2</span>
+                    </div>
+                    <input type="range" id="slider-flare" min="0.2" max="3.0" step="0.1" value="1.2" class="w-full accent-cyan-400 bg-white/10 rounded-lg appearance-none h-1.5 cursor-pointer">
+                </div>
+
+                <div>
+                    <div class="flex justify-between text-gray-300 mb-1">
+                        <span>Turbulence / Surface Activity</span>
+                        <span id="turb-val">1.0</span>
+                    </div>
+                    <input type="range" id="slider-turb" min="0.1" max="2.5" step="0.1" value="1.0" class="w-full accent-cyan-400 bg-white/10 rounded-lg appearance-none h-1.5 cursor-pointer">
+                </div>
+            </div>
+
+            <!-- Toggles & Background Features -->
+            <div class="space-y-2 pt-2 border-t border-white/10">
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-300">Space Particles Dust</span>
+                    <input type="checkbox" id="toggle-particles" checked class="w-4 h-4 accent-cyan-400 rounded cursor-pointer">
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-300">Cosmic Nebula Clouds</span>
+                    <input type="checkbox" id="toggle-nebula" checked class="w-4 h-4 accent-cyan-400 rounded cursor-pointer">
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-gray-300">Solar Flare Rays</span>
+                    <input type="checkbox" id="toggle-rays" checked class="w-4 h-4 accent-cyan-400 rounded cursor-pointer">
+                </div>
+            </div>
+
+            <!-- Camera Reset Button -->
+            <div class="pt-2">
+                <button id="reset-cam-btn" class="w-full glass-btn py-2 rounded-xl text-center font-medium text-cyan-300 hover:text-white transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-arrows-to-dot"></i> Reset Camera View
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Touch / Mouse Guide -->
+    <div class="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-10 pointer-events-none text-center">
+        <div class="glass-panel px-4 py-1.5 rounded-full text-xs text-gray-300 flex items-center gap-3 shadow-xl">
+            <span><i class="fa-solid fa-hand-pointer mr-1 text-cyan-400"></i> Drag to rotate</span>
+            <span>•</span>
+            <span><i class="fa-solid fa-magnifying-glass mr-1 text-cyan-400"></i> Scroll / Pinch to zoom</span>
+        </div>
+    </div>
+
+    <script>
+        // --- Custom GLSL Shaders for Realistic Star Surface and Corona Halo ---
+        
+        // 1. Star Surface Vertex Shader
+        const starVertexShader = `
+            varying vec2 vUv;
+            varying vec3 vNormal;
+            varying vec3 vPosition;
+            uniform float uTime;
+            uniform float uTurbulence;
+
+            // Simplex Noise algorithm implementation
+            vec3 mod289(vec3 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+            vec4 mod289(vec4 x) { return x - floor(x * (1.0 / 289.0)) * 289.0; }
+            vec4 permute(vec4 x) { return mod289(((x*34.0)+1.0)*x); }
+            vec4 taylorInvSqrt(vec4 r) { return 1.79284291400159 - 0.85373472095314 * r; }
+
+            float snoise(vec3 v) {
+                const vec2 C = vec2(1.0/6.0, 1.0/3.0);
+                const vec4 D = vec4(0.0, 0.5, 1.0, 2.0);
+                vec3 i  = floor(v + dot(v, C.yyy));
+                vec3 x0 = v - i + dot(i, C.xxx);
+                vec3 g = step(x0.yzx, x0.xyz);
+                vec3 l = 1.0 - g;
+                vec3 i1 = min(g.xyz, l.zxy);
+                vec3 i2 = max(g.xyz, l.zxy);
+                vec3 x1 = x0 - i1 + C.xxx;
+                vec3 x2 = x0 - i2 + C.yyy;
+                vec3 x3 = x0 - D.yyy;
+                i = mod289(i);
+                vec4 p = permute(permute(permute(
+                            i.z + vec4(0.0, i1.z, i2.z, 1.0))
+                        + i.y + vec4(0.0, i1.y, i2.y, 1.0))
+                        + i.x + vec4(0.0, i1.x, i2.x, 1.0));
+                float n_ = 0.142857142857;
+                vec3 ns = n_ * D.wyz - D.xzx;
+                vec4 j = p - 49.0 * floor(p * ns.z);
+                vec4 x_ = floor(j * ns.z);
+                vec4 y_ = floor(j - 7.0 * x_);
+                vec4 x = x_ *ns.x + ns.yyyy;
+                vec4 y = y_ *ns.x + ns.yyyy;
+                vec4 h = 1.0 - abs(x) - abs(y);
+                vec4 b0 = vec4(x.xy, y.xy);
+                vec4 b1 = vec4(x.zw, y.zw);
+                vec4 s0 = floor(b0)*2.0 + 1.0;
+                vec4 s1 = floor(b1)*2.0 + 1.0;
+                vec4 sh = -step(h, vec4(0.0));
+                vec4 a0 = b0.xzyw + s0.xzyw*sh.xxyy;
+                vec4 a1 = b1.xzyw + s1.xzyw*sh.zzww;
+                vec3 p0 = vec3(a0.xy, h.x);
+                vec3 p1 = vec3(a0.zw, h.y);
+                vec3 p2 = vec3(a1.xy, h.z);
+                vec3 p3 = vec3(a1.zw, h.w);
+                vec4 norm = taylorInvSqrt(vec4(dot(p0,p0), dot(p1,p1), dot(p2, p2), dot(p3,p3)));
+                p0 *= norm.x;
+                p1 *= norm.y;
+                p2 *= norm.z;
+                p3 *= norm.w;
+                vec4 m = max(0.6 - vec4(dot(x0,x0), dot(x1,x1), dot(x2,x2), dot(x3,x3)), 0.0);
+                m = m * m;
+                return 42.0 * dot(m*m, vec4(dot(p0,x0), dot(p1,x1), dot(p2,x2), dot(p3,x3)));
+            }
+
+            void main() {
+                vUv = uv;
+                vNormal = normalize(normalMatrix * normal);
+                
+                // Add surface turbulence displacement
+                float noise = snoise(position * 0.8 + vec3(uTime * 0.2)) * 0.08 * uTurbulence;
+                vec3 newPosition = position + normal * noise;
+                vPosition = newPosition;
+
+                gl_Position = projectionMatrix * modelViewMatrix * vec4(newPosition, 1.0);
+            }
+        `;
+
+        // 2. Star Surface Fragment Shader (Realistic Plasma Turbulence)
+        const starFragmentShader = `
+            uniform float uTime;
+            uniform vec3 uCoreColor;
+            uniform vec3 uCoronaColor;
+            uniform float uTurbulence;
+            varying vec2 vUv;
+            varying vec3 vNormal;
+            varying vec3 vPosition;
+
+            // Simple noise function
+            float rand(vec2 n) { 
+                return fract(sin(dot(n, vec2(12.9898, 41.14))) * 43758.5453);
+            }
+
+            // Fractal Brownian Motion
+            float fbm(vec3 p) {
+                float value = 0.0;
+                float amplitude = 0.5;
+                for (int i = 0; i < 4; i++) {
+                    value += amplitude * abs(sin(p.x + p.y + p.z));
+                    p *= 2.0;
+                    amplitude *= 0.5;
+                }
+                return value;
+            }
+
+            void main() {
+                vec3 viewDir = normalize(-vPosition);
+                float fresnel = pow(1.0 - max(0.0, dot(vNormal, viewDir)), 2.0);
+
+                // Animated plasma waves
+                vec3 p = vPosition * 1.5 + vec3(0.0, uTime * 0.3, uTime * 0.2);
+                float noiseVal = fbm(p * uTurbulence);
+
+                // Blend core temperature colors
+                vec3 color = mix(uCoreColor, uCoronaColor, noiseVal + fresnel * 0.5);
+                color += uCoreColor * (1.2 - fresnel) * 0.4;
+
+                gl_FragColor = vec4(color, 1.0);
+            }
+        `;
+
+        // 3. Glow Atmosphere / Fresnel Flare Shader
+        const coronaGlowShader = {
+            vertexShader: `
+                varying vec3 vNormal;
+                varying vec3 vPosition;
+                void main() {
+                    vNormal = normalize(normalMatrix * normal);
+                    vPosition = (modelViewMatrix * vec4(position, 1.0)).xyz;
+                    gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+                }
+            `,
+            fragmentShader: `
+                uniform vec3 uGlowColor;
+                uniform float uIntensity;
+                varying vec3 vNormal;
+                varying vec3 vPosition;
+
+                void main() {
+                    vec3 viewDir = normalize(-vPosition);
+                    float intensity = pow(0.65 - dot(vNormal, viewDir), 2.5) * uIntensity;
+                    gl_FragColor = vec4(uGlowColor, intensity);
+                }
+            `
+        };
+
+        // --- Main Scene Setup ---
+        const container = document.getElementById('webgl-container');
+        let width = window.innerWidth;
+        let height = window.innerHeight;
+
+        const scene = new THREE.Scene();
+        scene.fog = new THREE.FogExp2(0x020208, 0.002);
+
+        const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+        camera.position.set(0, 0, 10);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: "high-performance" });
+        renderer.setSize(width, height);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.2;
+        container.appendChild(renderer.domElement);
+
+        // Uniforms configuration
+        const uniforms = {
+            uTime: { value: 0 },
+            uTurbulence: { value: 1.0 },
+            uCoreColor: { value: new THREE.Color('#fffae0') },
+            uCoronaColor: { value: new THREE.Color('#ff9d00') },
+            uGlowColor: { value: new THREE.Color('#ff4400') },
+            uIntensity: { value: 1.2 }
+        };
+
+        // --- Create Main Star Object ---
+        const starGroup = new THREE.Group();
+        scene.add(starGroup);
+
+        // Star Core Sphere
+        const starGeometry = new THREE.SphereGeometry(1.5, 64, 64);
+        const starMaterial = new THREE.ShaderMaterial({
+            vertexShader: starVertexShader,
+            fragmentShader: starFragmentShader,
+            uniforms: uniforms,
+            wireframe: false
+        });
+        const starMesh = new THREE.Mesh(starGeometry, starMaterial);
+        starGroup.add(starMesh);
+
+        // Outer Glow Mesh (Corona Atmosphere)
+        const glowGeometry = new THREE.SphereGeometry(1.85, 48, 48);
+        const glowMaterial = new THREE.ShaderMaterial({
+            vertexShader: coronaGlowShader.vertexShader,
+            fragmentShader: coronaGlowShader.fragmentShader,
+            uniforms: uniforms,
+            blending: THREE.AdditiveBlending,
+            side: THREE.BackSide,
+            transparent: true,
+            depthWrite: false
+        });
+        const glowMesh = new THREE.Mesh(glowGeometry, glowMaterial);
+        starGroup.add(glowMesh);
+
+        // Solar Rays / Light Flares Billboard Sprite Creation
+        function createFlareTexture() {
+            const canvas = document.createElement('canvas');
+            canvas.width = 256;
+            canvas.height = 256;
+            const ctx = canvas.getContext('2d');
+            
+            const grad = ctx.createRadialGradient(128, 128, 0, 128, 128, 128);
+            grad.addColorStop(0, 'rgba(255, 255, 255, 1.0)');
+            grad.addColorStop(0.15, 'rgba(255, 220, 150, 0.8)');
+            grad.addColorStop(0.4, 'rgba(255, 120, 30, 0.3)');
+            grad.addColorStop(1, 'rgba(0, 0, 0, 0)');
+            
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 256, 256);
+
+            // Draw sharp diffraction spikes
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(128, 0); ctx.lineTo(128, 256);
+            ctx.moveTo(0, 128); ctx.lineTo(256, 128);
+            ctx.stroke();
+
+            return new THREE.CanvasTexture(canvas);
+        }
+
+        const flareTexture = createFlareTexture();
+        const flareMaterial = new THREE.SpriteMaterial({
+            map: flareTexture,
+            blending: THREE.AdditiveBlending,
+            transparent: true,
+            opacity: 0.85
+        });
+
+        const flareSprite = new THREE.Sprite(flareMaterial);
+        flareSprite.scale.set(7, 7, 1);
+        starGroup.add(flareSprite);
+
+        // Additional dynamic Lens Rays
+        const rayGroup = new THREE.Group();
+        starGroup.add(rayGroup);
+
+        for (let i = 0; i < 4; i++) {
+            const rayMat = new THREE.SpriteMaterial({
+                map: flareTexture,
+                blending: THREE.AdditiveBlending,
+                transparent: true,
+                opacity: 0.4,
+                rotation: (Math.PI / 4) * i
+            });
+            const ray = new THREE.Sprite(rayMat);
+            ray.scale.set(9, 1.2, 1);
+            rayGroup.add(ray);
+        }
+
+        // --- Dynamic Starfield Background & Nebulae ---
+        let starsParticles, nebulaParticles;
+
+        function createStarfield() {
+            const count = 3500;
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(count * 3);
+            const colors = new Float32Array(count * 3);
+            const sizes = new Float32Array(count);
+
+            const baseColors = [
+                new THREE.Color('#ffffff'),
+                new THREE.Color('#9bb0ff'),
+                new THREE.Color('#ffcc6f'),
+                new THREE.Color('#ff7b7b')
+            ];
+
+            for (let i = 0; i < count; i++) {
+                const r = 50 + Math.random() * 150;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos((Math.random() * 2) - 1);
+
+                positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+                positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+                positions[i * 3 + 2] = r * Math.cos(phi);
+
+                const color = baseColors[Math.floor(Math.random() * baseColors.length)];
+                colors[i * 3] = color.r;
+                colors[i * 3 + 1] = color.g;
+                colors[i * 3 + 2] = color.b;
+
+                sizes[i] = Math.random() * 1.5 + 0.5;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+            geometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1));
+
+            const material = new THREE.PointsMaterial({
+                size: 1.2,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.8
+            });
+
+            starsParticles = new THREE.Points(geometry, material);
+            scene.add(starsParticles);
+        }
+
+        function createNebula() {
+            const count = 400;
+            const geometry = new THREE.BufferGeometry();
+            const positions = new Float32Array(count * 3);
+            const colors = new Float32Array(count * 3);
+
+            for (let i = 0; i < count; i++) {
+                const r = 15 + Math.random() * 35;
+                const theta = Math.random() * Math.PI * 2;
+                const phi = Math.acos((Math.random() * 2) - 1);
+
+                positions[i * 3] = r * Math.sin(phi) * Math.cos(theta);
+                positions[i * 3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+                positions[i * 3 + 2] = r * Math.cos(phi);
+
+                const c = new THREE.Color().setHSL(0.6 + Math.random() * 0.2, 0.8, 0.4);
+                colors[i * 3] = c.r;
+                colors[i * 3 + 1] = c.g;
+                colors[i * 3 + 2] = c.b;
+            }
+
+            geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+            geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+            const material = new THREE.PointsMaterial({
+                size: 8.0,
+                vertexColors: true,
+                transparent: true,
+                opacity: 0.12,
+                blending: THREE.AdditiveBlending,
+                depthWrite: false
+            });
+
+            nebulaParticles = new THREE.Points(geometry, material);
+            scene.add(nebulaParticles);
+        }
+
+        createStarfield();
+        createNebula();
+
+        // --- Interactive Mouse / Touch Control Logic ---
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let rotationSpeed = 1.0;
+        let targetRotation = { x: 0, y: 0 };
+        let currentRotation = { x: 0, y: 0 };
+        let targetZoom = 10;
+        let currentZoom = 10;
+
+        function onPointerDown(e) {
+            isDragging = true;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            previousMousePosition = { x: clientX, y: clientY };
+        }
+
+        function onPointerMove(e) {
+            if (!isDragging) return;
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+
+            const deltaX = clientX - previousMousePosition.x;
+            const deltaY = clientY - previousMousePosition.y;
+
+            targetRotation.y += deltaX * 0.005;
+            targetRotation.x += deltaY * 0.005;
+
+            // Clamp vertical camera angle
+            targetRotation.x = Math.max(-Math.PI / 2.2, Math.min(Math.PI / 2.2, targetRotation.x));
+
+            previousMousePosition = { x: clientX, y: clientY };
+        }
+
+        function onPointerUp() {
+            isDragging = false;
+        }
+
+        function onWheel(e) {
+            targetZoom += e.deltaY * 0.01;
+            targetZoom = Math.max(4.0, Math.min(25.0, targetZoom));
+        }
+
+        // Pinch to Zoom for Mobile
+        let touchStartDist = 0;
+        function onTouchStart(e) {
+            if (e.touches.length === 2) {
+                touchStartDist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+            } else if (e.touches.length === 1) {
+                onPointerDown(e);
+            }
+        }
+
+        function onTouchMove(e) {
+            if (e.touches.length === 2) {
+                const dist = Math.hypot(
+                    e.touches[0].clientX - e.touches[1].clientX,
+                    e.touches[0].clientY - e.touches[1].clientY
+                );
+                const delta = (touchStartDist - dist) * 0.03;
+                targetZoom = Math.max(4.0, Math.min(25.0, targetZoom + delta));
+                touchStartDist = dist;
+            } else if (e.touches.length === 1) {
+                onPointerMove(e);
+            }
+        }
+
+        // Event Listeners
+        window.addEventListener('mousedown', onPointerDown);
+        window.addEventListener('mousemove', onPointerMove);
+        window.addEventListener('mouseup', onPointerUp);
+        window.addEventListener('wheel', onWheel, { passive: true });
+
+        window.addEventListener('touchstart', onTouchStart, { passive: true });
+        window.addEventListener('touchmove', onTouchMove, { passive: true });
+        window.addEventListener('touchend', onPointerUp);
+
+        // --- UI Controller Bindings ---
+        const controlPanel = document.getElementById('control-panel');
+        const togglePanelBtn = document.getElementById('toggle-panel-btn');
+        const closePanelBtn = document.getElementById('close-panel-btn');
+
+        togglePanelBtn.addEventListener('click', () => {
+            controlPanel.classList.toggle('hidden');
+        });
+
+        closePanelBtn.addEventListener('click', () => {
+            controlPanel.classList.add('hidden');
+        });
+
+        // Color Pickers
+        const corePicker = document.getElementById('core-color-picker');
+        const coronaPicker = document.getElementById('corona-color-picker');
+        const glowPicker = document.getElementById('glow-color-picker');
+
+        corePicker.addEventListener('input', (e) => uniforms.uCoreColor.value.set(e.target.value));
+        coronaPicker.addEventListener('input', (e) => uniforms.uCoronaColor.value.set(e.target.value));
+        glowPicker.addEventListener('input', (e) => uniforms.uGlowColor.value.set(e.target.value));
+
+        // Presets
+        document.querySelectorAll('.preset-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const core = btn.getAttribute('data-core');
+                const corona = btn.getAttribute('data-corona');
+                const glow = btn.getAttribute('data-glow');
+
+                corePicker.value = core;
+                coronaPicker.value = corona;
+                glowPicker.value = glow;
+
+                uniforms.uCoreColor.value.set(core);
+                uniforms.uCoronaColor.value.set(corona);
+                uniforms.uGlowColor.value.set(glow);
+            });
+        });
+
+        // Sliders
+        const sliderSize = document.getElementById('slider-size');
+        const sliderSpeed = document.getElementById('slider-speed');
+        const sliderFlare = document.getElementById('slider-flare');
+        const sliderTurb = document.getElementById('slider-turb');
+
+        sliderSize.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            document.getElementById('size-val').innerText = val.toFixed(1);
+            starMesh.scale.set(val, val, val);
+            glowMesh.scale.set(val, val, val);
+            flareSprite.scale.set(7 * val, 7 * val, 1);
+        });
+
+        sliderSpeed.addEventListener('input', (e) => {
+            rotationSpeed = parseFloat(e.target.value);
+            document.getElementById('speed-val').innerText = rotationSpeed.toFixed(1);
+        });
+
+        sliderFlare.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            document.getElementById('flare-val').innerText = val.toFixed(1);
+            uniforms.uIntensity.value = val;
+            flareSprite.material.opacity = Math.min(1.0, val * 0.7);
+        });
+
+        sliderTurb.addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            document.getElementById('turb-val').innerText = val.toFixed(1);
+            uniforms.uTurbulence.value = val;
+        });
+
+        // Toggles
+        document.getElementById('toggle-particles').addEventListener('change', (e) => {
+            if (starsParticles) starsParticles.visible = e.target.checked;
+        });
+
+        document.getElementById('toggle-nebula').addEventListener('change', (e) => {
+            if (nebulaParticles) nebulaParticles.visible = e.target.checked;
+        });
+
+        document.getElementById('toggle-rays').addEventListener('change', (e) => {
+            flareSprite.visible = e.target.checked;
+            rayGroup.visible = e.target.checked;
+        });
+
+        // Camera Reset Button
+        document.getElementById('reset-cam-btn').addEventListener('click', () => {
+            targetRotation = { x: 0, y: 0 };
+            targetZoom = 10;
+        });
+
+        // --- Resize Handler ---
+        window.addEventListener('resize', () => {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        });
+
+        // --- Main Animation Loop ---
+        const clock = new THREE.Clock();
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const elapsedTime = clock.getElapsedTime();
+            uniforms.uTime.value = elapsedTime;
+
+            // Auto Star Surface Self-Rotation
+            starMesh.rotation.y += 0.003 * rotationSpeed;
+            rayGroup.rotation.z -= 0.0015 * rotationSpeed;
+
+            // Smooth Interpolation for Camera Interaction Orbiting
+            currentRotation.x += (targetRotation.x - currentRotation.x) * 0.05;
+            currentRotation.y += (targetRotation.y - currentRotation.y) * 0.05;
+            currentZoom += (targetZoom - camera.position.z) * 0.08;
+
+            camera.position.z = currentZoom;
+            
+            // Orbit camera around center star
+            starGroup.rotation.x = currentRotation.x;
+            starGroup.rotation.y = currentRotation.y;
+
+            // Twinkle Distant Starfield Parallax
+            if (starsParticles) {
+                starsParticles.rotation.y = elapsedTime * 0.0005;
+            }
+            if (nebulaParticles) {
+                nebulaParticles.rotation.y = -elapsedTime * 0.0002;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Start render loop on load
+        window.onload = function() {
+            animate();
+        };
+    </script>
 </body>
 </html>
+```
